@@ -1,0 +1,15 @@
+[Unit]
+Description=Codex Feishu Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/codex-feishu-bot
+Environment=CODEX_FEISHU_CONFIG=%h/.config/codex-feishu-bot/config.json
+ExecStart=/usr/bin/env npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

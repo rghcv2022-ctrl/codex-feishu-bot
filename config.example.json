@@ -1,0 +1,12 @@
+{
+  "appId": "cli_your_app_id",
+  "appSecret": "replace-with-your-app-secret",
+  "workspace": "/absolute/path/to/your/workspace",
+  "dataDir": "/absolute/path/to/codex-feishu-bot-data",
+  "replyChunkChars": 1800,
+  "codex": {
+    "model": "gpt-5.4",
+    "extraArgs": []
+  },
+  "systemPrompt": "You are replying inside a Feishu direct message. Reply in Chinese by default, keep formatting plain text, and do not use markdown tables."
+}

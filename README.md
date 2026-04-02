@@ -1,150 +1,172 @@
 # Codex Feishu Bot
 
-A lightweight Feishu DM bot that forwards private messages to your local `codex` CLI and sends the reply back to Feishu.
+Feishu private-message bot that forwards user messages to a local `codex` CLI session and sends the reply back to Feishu.
 
-This repository is safe to publish as a template/example: it does **not** include any real Feishu credentials, user IDs, machine names, or private deployment paths.
+This repository is prepared for GitHub publishing and intentionally excludes real credentials, personal IDs, private deployment paths, and local runtime state.
 
-## Features
+## Why this project exists
 
-- Feishu self-built app integration over long connection (WebSocket)
-- One Codex conversation thread per Feishu contact
-- `/new` and `/reset` to clear the current conversation
+If you already use Codex locally, Feishu is a convenient front end for talking to it from your phone or desktop chat client.
+
+This bot keeps the design simple:
+
+- Feishu DM in
+- local Codex turn execution
+- reply back to Feishu
+- per-contact conversation state persisted on disk
+
+## Highlights
+
+- Feishu self-built app integration via long connection (WebSocket)
+- One Codex thread per Feishu contact
+- `/new` and `/reset` to clear conversation context
 - Plain text replies optimized for Feishu direct messages
-- Separate config and state outside the repository
-- Windows helper scripts and a Linux `systemd --user` service template
+- Config and runtime state stored outside the repository
+- Windows helper scripts for quick local usage
+- Linux `systemd --user` service template for persistent background deployment
 
-## How It Works
+## Current scope
 
-1. A user sends a private text message to the Feishu bot.
-2. The bot receives the message through Feishu events.
-3. The message is forwarded to the local `codex` CLI.
-4. The bot stores the returned thread ID for that Feishu contact.
-5. The Codex reply is sent back to Feishu.
+This project is intentionally narrow and predictable.
+
+Supported well:
+
+- Feishu private text messages
+- one conversation state per contact
+- local Codex CLI invocation
+- lightweight self-hosted personal use
+
+Not the goal right now:
+
+- group chat workflows
+- attachments / images / voice input
+- multi-tenant access control
+- admin dashboard
+- cloud-native production architecture
+
+## Architecture
+
+```text
+Feishu user
+   ↓
+Feishu bot event (WebSocket)
+   ↓
+Message parsing / filtering
+   ↓
+Per-user queue + state lookup
+   ↓
+Local codex CLI execution
+   ↓
+Thread ID persistence
+   ↓
+Reply chunking
+   ↓
+Feishu DM response
+```
+
+## Project structure
+
+```text
+src/
+  config.js                  Config loading and validation
+  codex.js                   Codex CLI execution wrapper
+  feishu.js                  Feishu API + WebSocket helpers
+  index.js                   Main event loop
+  state.js                   Per-user message/thread persistence
+config.example.json          Public-safe config example
+deploy/codex-feishu-bot.service  Example systemd user service
+probe-bot.cmd                Windows helper to verify Feishu config
+start-bot.cmd                Windows helper to start the bot
+```
 
 ## Requirements
 
 - Node.js 18+
 - `codex` CLI installed and available in `PATH`
 - A Feishu self-built app with bot capability enabled
-- Permission to receive and send bot messages in Feishu
+- Permission for the app to receive and send bot messages
 
-## Feishu App Setup
+## Feishu app setup
 
 Create a self-built Feishu app and enable:
 
 - Bot capability
 - Long connection / event subscription
-- Event: `im.message.receive_v1`
+- Event subscription: `im.message.receive_v1`
 
-Grant the permissions required for:
+Make sure the app has permission to:
 
-- Receiving bot messages
-- Sending bot messages
+- receive bot messages
+- send bot messages
 
 Then install the app for the account(s) that should talk to the bot.
 
-## Project Structure
-
-```text
-src/                         Application source
-  config.js                  Config loading and validation
-  codex.js                   Codex CLI execution
-  feishu.js                  Feishu API + WebSocket client helpers
-  index.js                   Main event loop
-  state.js                   Per-user thread/message state
-config.example.json          Public-safe config example
-start-bot.cmd                Windows helper to start the bot
-probe-bot.cmd                Windows helper to verify credentials
-deploy/codex-feishu-bot.service  Example systemd user service
-```
-
-## Installation
+## Quick start
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/<your-account>/codex-feishu-bot.git
 cd codex-feishu-bot
 npm install
 ```
 
-## Configuration
+Copy the example config to your real config location and fill in your own values.
 
-Copy `config.example.json` to your real config location and fill in your own values.
-
-Default config path used by the app:
+Default config path:
 
 - Linux/macOS: `~/.config/codex-feishu-bot/config.json`
 - Windows: `%USERPROFILE%\.config\codex-feishu-bot\config.json`
 
-You can also override the path with:
+You can also override it with:
 
 ```bash
 CODEX_FEISHU_CONFIG=/absolute/path/to/config.json
 ```
 
-### Example Config
-
-See `config.example.json`.
-
-Important fields:
-
-- `appId`: your Feishu app ID
-- `appSecret`: your Feishu app secret
-- `workspace`: the directory where Codex should run
-- `dataDir`: where the bot stores message/thread state
-- `replyChunkChars`: message chunk size for long replies
-- `codex.model`: optional Codex model name
-- `codex.extraArgs`: optional extra CLI arguments
-- `systemPrompt`: default prompt prepended to each Codex turn
-
-## Usage
-
-### Verify the Feishu credentials first
+Verify the Feishu configuration first:
 
 ```bash
 npm run probe
 ```
 
-Or with an explicit config path:
-
-```bash
-CODEX_FEISHU_CONFIG=/absolute/path/to/config.json npm run probe
-```
-
-### Start the bot
+Then start the bot:
 
 ```bash
 npm start
 ```
 
-Or with an explicit config path:
+## Example config
 
-```bash
-CODEX_FEISHU_CONFIG=/absolute/path/to/config.json npm start
-```
+See `config.example.json` for the full public-safe template.
 
-### Windows helpers
+Important fields:
+
+- `appId`: your Feishu app ID
+- `appSecret`: your Feishu app secret
+- `workspace`: directory where `codex` should run
+- `dataDir`: directory where the bot stores thread and message state
+- `replyChunkChars`: chunk size for long Feishu replies
+- `codex.model`: optional model override for the local Codex call
+- `codex.extraArgs`: optional additional CLI arguments
+- `systemPrompt`: prompt prefix added before each Codex turn
+
+## Windows usage
+
+Helper scripts are included for convenience:
 
 ```bat
 probe-bot.cmd
 start-bot.cmd
 ```
 
-## Commands in Feishu
+## Linux background deployment
 
-- `/new` — start a fresh Codex conversation
-- `/reset` — clear the saved conversation context
-
-## Deployment
-
-### systemd user service (Linux)
-
-A template service file is included at:
+A sample `systemd --user` service is included at:
 
 ```text
 deploy/codex-feishu-bot.service
 ```
 
-Copy it into your user service directory, then adjust paths if needed:
+Typical install flow:
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -154,31 +176,76 @@ systemctl --user enable --now codex-feishu-bot.service
 systemctl --user status codex-feishu-bot.service
 ```
 
-## Security Notes
+## Feishu commands
 
-- Never commit your real `appSecret`, access tokens, or private config files.
-- Keep the real config file outside the repository.
-- Review any `codex.extraArgs` before enabling them in production.
-- If you expose this beyond your own Feishu account, add stronger access controls and logging.
-- The bot is currently designed for Feishu private text messages only.
+- `/new` — start a fresh Codex conversation
+- `/reset` — clear saved conversation context
+
+## Security model
+
+This repository is meant to be publishable, but your actual deployment is still sensitive.
+
+Rules worth keeping:
+
+- Never commit a real `config.json`
+- Never commit a real `appSecret`
+- Keep runtime state outside the repository
+- Review `codex.extraArgs` before using them in production
+- Restrict who can talk to the bot if you expose it beyond personal use
+- Treat the bot host like any other machine with local CLI access
 
 ## Troubleshooting
 
-- If `npm run probe` fails, verify the Feishu app ID, secret, permissions, and installation status.
-- If Codex replies fail, make sure the `codex` command works in the configured `workspace`.
-- If thread resume fails, clear the conversation with `/reset` and try again.
-- If the service cannot read the config or write state, fix the config/data directory permissions.
+If `npm run probe` fails:
 
-## Publish Checklist
+- verify the Feishu app ID and secret
+- verify the app permissions and event subscription
+- verify the app is installed for the target account
 
-Before pushing to GitHub, confirm that you did **not** commit:
+If Codex replies fail:
 
-- Real `config.json`
-- Real Feishu credentials
-- Private workspace paths tied to one machine
-- Logs or exported message history
-- Local state files
+- make sure `codex` works in the configured `workspace`
+- check whether the configured model / extra args are valid
+- try `/reset` to clear broken thread state
+
+If the bot starts but does not answer:
+
+- verify the incoming message is a private text message
+- verify the app is receiving `im.message.receive_v1`
+- inspect local logs for Codex CLI failures
+
+If persistence behaves strangely:
+
+- inspect the configured `dataDir`
+- confirm the process can read and write that directory
+
+## Publish checklist
+
+Before pushing changes publicly, confirm that you did not commit:
+
+- real Feishu credentials
+- private `config.json`
+- machine-specific secret paths
+- exported chat history
+- runtime state or logs
+
+## Roadmap ideas
+
+Useful next steps if you want to keep developing this:
+
+- allowlist for permitted Feishu users
+- better structured logging
+- richer health checks
+- attachment-aware workflows
+- Docker deployment option
+- configurable reply style / language presets
+
+## Contributing
+
+This repository is currently positioned as a small practical example rather than a fully formal open-source platform.
+
+If you reuse it, keep the public repo clean and keep your real credentials outside version control.
 
 ## License
 
-Add your preferred license before publishing if this repository will be shared publicly.
+Add your preferred license before broader public sharing.
